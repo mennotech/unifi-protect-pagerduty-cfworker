@@ -10,19 +10,43 @@ export default {
       );
     }
 
-    const incomingWorkerKey = request.headers.get("Worker-Key");
+    const incomingWorkerKey = (request.headers.get("Worker-Key") || "").trim();
     const pagerDutyRoutingKey = request.headers.get("PagerDuty-Routing-Key");
     const VALID_SEVERITIES = ["critical", "error", "warning", "info"];
     const rawSeverity = (request.headers.get("PagerDuty-Severity") || "").toLowerCase();
     const requestedSeverity = VALID_SEVERITIES.includes(rawSeverity) ? rawSeverity : "critical";
 
     // Authentication check using the WORKER_KEY secret.
+    // Both values are trimmed so a stray newline/space (common when piping a
+    // file into `wrangler secret put`) doesn't cause a confusing 401.
     // Uses a constant-time comparison to avoid leaking the key via timing.
-    if (
-      !incomingWorkerKey ||
-      !env.WORKER_KEY ||
-      !(await timingSafeEqualString(incomingWorkerKey, env.WORKER_KEY))
-    ) {
+    const workerKey = (env.WORKER_KEY || "").trim();
+
+    // Server misconfiguration: the WORKER_KEY secret is not set on the worker.
+    // Reported separately (500) so it isn't confused with a bad/missing request key.
+    if (!workerKey) {
+      return jsonResponse(
+        {
+          ok: false,
+          error: "Server misconfigured: WORKER_KEY secret is not set"
+        },
+        500
+      );
+    }
+
+    // Client did not send the Worker-Key header.
+    if (!incomingWorkerKey) {
+      return jsonResponse(
+        {
+          ok: false,
+          error: "Missing Worker-Key header"
+        },
+        401
+      );
+    }
+
+    // Header present but does not match the configured secret.
+    if (!(await timingSafeEqualString(incomingWorkerKey, workerKey))) {
       return jsonResponse(
         {
           ok: false,
@@ -232,10 +256,18 @@ function safeJsonOrText(text) {
 }
 
 function jsonResponse(data, status = 200) {
+  const headers = {
+    "Content-Type": "application/json"
+  };
+
+  // Surface the error message in a header to make troubleshooting easier
+  // when the response body isn't readily visible (e.g. in proxy/edge logs).
+  if (data && data.error) {
+    headers["X-Worker-Error"] = String(data.error).replace(/[\r\n]+/g, " ");
+  }
+
   return new Response(JSON.stringify(data, null, 2), {
     status,
-    headers: {
-      "Content-Type": "application/json"
-    }
+    headers
   });
 }

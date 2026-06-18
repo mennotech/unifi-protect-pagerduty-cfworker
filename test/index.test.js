@@ -89,13 +89,24 @@ describe("authentication", () => {
     const res = await worker.fetch(req, ENV);
     expect(res.status).toBe(401);
     const body = await res.json();
-    expect(body.error).toBe("Unauthorized");
+    expect(body.error).toBe("Missing Worker-Key header");
   });
 
   it("returns 401 when Worker-Key is wrong", async () => {
     const req = makeRequest(LIVE_PAYLOAD, { ...VALID_HEADERS, "Worker-Key": "wrong-key" });
     const res = await worker.fetch(req, ENV);
     expect(res.status).toBe(401);
+    const body = await res.json();
+    expect(body.error).toBe("Unauthorized");
+  });
+
+  it("returns 500 when WORKER_KEY secret is not configured", async () => {
+    const { WORKER_KEY: _omit, ...envWithoutKey } = ENV;
+    const req = makeRequest(LIVE_PAYLOAD);
+    const res = await worker.fetch(req, envWithoutKey);
+    expect(res.status).toBe(500);
+    const body = await res.json();
+    expect(body.error).toBe("Server misconfigured: WORKER_KEY secret is not set");
   });
 });
 

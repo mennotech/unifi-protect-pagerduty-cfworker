@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-06-18
+
+### Added
+
+- `X-Worker-Error` response header echoing the error message for easier
+  troubleshooting in proxy/edge logs.
+- Distinct authentication errors: a missing `Worker-Key` header now returns
+  `Missing Worker-Key header` (401), and an unconfigured `WORKER_KEY` secret
+  returns `Server misconfigured: WORKER_KEY secret is not set` (500), separate
+  from the `Unauthorized` (401) mismatch response.
+
+### Fixed
+
+- Trim the `Worker-Key` header and `WORKER_KEY` secret before comparison so a
+  stray newline or whitespace (e.g. from piping a file into
+  `wrangler secret put`) no longer causes a spurious 401.
+
 ## [1.0.0] - 2026-06-18
 
 ### Added
@@ -33,5 +50,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Graceful `502` response when the PagerDuty request fails instead of an
   unhandled exception.
 
-[Unreleased]: https://github.com/mennotech/unifi-protect-pagerduty-cfworker/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/mennotech/unifi-protect-pagerduty-cfworker/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/mennotech/unifi-protect-pagerduty-cfworker/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/mennotech/unifi-protect-pagerduty-cfworker/releases/tag/v1.0.0
