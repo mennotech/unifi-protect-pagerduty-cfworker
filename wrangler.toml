@@ -1,0 +1,9 @@
+name = "unifi-protect-pagerduty"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+[vars]
+PAGERDUTY_EVENTS_URL = "https://events.eu.pagerduty.com/v2/enqueue"
+
+# Secrets (set via CLI, never commit values):
+#   wrangler secret put WORKER_KEY
